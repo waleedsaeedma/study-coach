@@ -4,7 +4,9 @@ An AI study tutor built with **LangGraph**. Upload your course notes (PDF), and 
 own notes, quizzes you, remembers your weak topics across sessions, and talks with you live, in **English or
 Dutch**.
 
-🎬 **Demo video:** [docs/demo.webm](docs/demo.webm)
+## 🎬 Demo
+
+https://github.com/user-attachments/assets/fd2a0169-e4ce-4e22-a3b6-059614491977
 
 ## Features
 
