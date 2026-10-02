@@ -1,0 +1,25 @@
+# --- the agent (LangGraph) ---
+langgraph                      # nodes, edges, loops, interrupts
+langgraph-checkpoint-sqlite    # save state + store to disk (tutor.db)
+
+# --- LangChain parts ---
+langchain-core                 # messages, prompts, structured output
+langchain-openai               # ChatOpenAI (LLM) + OpenAIEmbeddings
+langchain-text-splitters       # cut the notes into chunks
+langchain-chroma               # connect LangChain to Chroma
+langchain-tavily               # web search tool
+
+# --- notes + config ---
+pypdf                          # read text + page numbers from PDFs
+pypdfium2                      # turn PDF pages into pictures (shown next to explanations)
+python-dotenv                  # load API keys from .env
+
+# --- UI ---
+streamlit                      # the web app (thin layer on top of the graph)
+
+# --- live voice (v3) ---
+fastapi                        # small web server: gives the browser a short-lived key + runs tools
+uvicorn                        # runs the FastAPI server
+
+# --- tests ---
+pytest                         # run all tests with one command: pytest

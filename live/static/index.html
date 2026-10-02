@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Coach Live</title>
+<style>
+  :root {
+    --bg: #f6f7fb; --card: #ffffff; --text: #1d2433; --muted: #6b7280; --line: #e5e7eb;
+    --accent: #3b5bdb; --accent-soft: #e7ecff; --tutor: #eef3ff; --me: #3b5bdb; --me-text: #ffffff;
+    --live: #e03131; --ok: #2f9e44;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151c; --card: #1b1f29; --text: #e8eaf0; --muted: #9aa3b2; --line: #2a3040;
+      --accent: #748ffc; --accent-soft: #232b45; --tutor: #222a3d; --me: #4c6ef5; --me-text: #ffffff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 1.5rem; margin: 0; }
+  header a { color: var(--accent); font-size: .9rem; text-decoration: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-top: 16px; }
+
+  .start { display: flex; gap: 10px; flex-wrap: wrap; }
+  .start select {
+    padding: 12px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font-size: 1rem;
+  }
+  .start input {
+    flex: 1 1 200px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font-size: 1rem;
+  }
+
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; }
+  .mic {
+    width: 112px; height: 112px; border-radius: 50%; border: none; cursor: pointer; font-size: 44px;
+    background: var(--accent); color: #fff; box-shadow: 0 6px 20px rgba(59, 91, 219, .35);
+    transition: transform .15s ease, background .2s ease;
+  }
+  .mic:hover { transform: scale(1.04); }
+  .mic.live { background: var(--live); animation: pulse 1.6s infinite; }
+  .mic.muted { background: var(--muted); animation: none; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(224, 49, 49, .45); }
+    70% { box-shadow: 0 0 0 22px rgba(224, 49, 49, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(224, 49, 49, 0); }
+  }
+  .status { color: var(--muted); font-size: .95rem; text-align: center; min-height: 1.5em; }
+  .row { display: flex; gap: 8px; }
+  button.small {
+    padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); cursor: pointer;
+    background: var(--card); color: var(--text); font-size: .9rem;
+  }
+  button.primary { background: var(--accent); color: #fff; border: none; padding: 12px 18px; border-radius: 10px; cursor: pointer; font-size: 1rem; }
+  button:disabled { opacity: .5; cursor: default; }
+
+  #chat { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .bubble { max-width: 85%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tutor { background: var(--tutor); align-self: flex-start; border-bottom-left-radius: 4px; }
+  .me { background: var(--me); color: var(--me-text); align-self: flex-end; border-bottom-right-radius: 4px; }
+  .me.pending { opacity: .6; font-style: italic; }
+  .chip {
+    align-self: center; font-size: .82rem; color: var(--accent); background: var(--accent-soft);
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .chip.done { color: var(--ok); }
+  .error { color: var(--live); text-align: center; font-size: .9rem; }
+  .empty { color: var(--muted); text-align: center; font-size: .95rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🎙️ Study Coach Live</h1>
+    <a href="http://localhost:8501" target="_blank">Open the text app →</a>
+  </header>
+
+  <!-- step 1: who are you? -->
+  <section class="card" id="startCard">
+    <p style="margin-top:0">Talk with your tutor like a phone call. Ask about your notes or say <b>"quiz me"</b>.
+      English or Nederlands. You can interrupt any time.</p>
+    <div class="start">
+      <input id="name" placeholder="Your name (same as in the text app)" autocomplete="off">
+      <select id="language" title="The language you will speak (helps the transcript)">
+        <option value="nl">🇳🇱 Nederlands</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="auto">🌍 Both (I switch)</option>
+      </select>
+      <select id="quality" title="Best understands Dutch better, but costs about 3x">
+        <option value="standard">🎧 Standard</option>
+        <option value="best">🎧 Best hearing (3× cost)</option>
+      </select>
+      <button class="primary" id="startBtn">Start talking</button>
+    </div>
+    <p class="error" id="startError"></p>
+  </section>
+
+  <!-- step 2: the live call -->
+  <section class="card hidden" id="callCard">
+    <div class="controls">
+      <button class="mic live" id="micBtn" title="Mute / unmute">🎙️</button>
+      <div class="status" id="status">Connecting…</div>
+      <div class="row">
+        <button class="small" id="muteBtn">Mute</button>
+        <button class="small" id="stopBtn">End call</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card hidden" id="chatCard">
+    <div id="chat"><p class="empty" id="emptyNote">The conversation will appear here.</p></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const TOOL_LABELS = {
+  list_topics: "🗂️ Checking your topics…",
+  search_notes: "📖 Looking in your notes…",
+  get_quiz_material: "📝 Preparing a question…",
+  pick_topic_for_me: "🎲 Picking a topic for you…",
+  save_quiz_answer: "💾 Saving your score…",
+  search_web: "🌐 Searching the web…",
+};
+
+let pc = null, dc = null, micStream = null, studentName = "";
+const bubbles = {};                       // item_id -> bubble element (keeps the order right)
+
+// ---------- chat helpers (textContent, never innerHTML: safe for any text) ----------
+function addBubble(kind, text, id) {
+  $("emptyNote")?.remove();
+  const div = document.createElement("div");
+  div.className = "bubble " + kind;
+  div.textContent = text;
+  $("chat").appendChild(div);
+  if (id) bubbles[id] = div;
+  div.scrollIntoView({ behavior: "smooth", block: "end" });
+  return div;
+}
+function addChip(text) {
+  const div = document.createElement("div");
+  div.className = "chip";
+  div.textContent = text;
+  $("chat").appendChild(div);
+  return div;
+}
+const setStatus = (text) => { $("status").textContent = text; };
+
+// ---------- start: get a short-lived key from OUR server, then connect to OpenAI ----------
+async function start() {
+  studentName = $("name").value.trim();
+  if (!studentName) { $("startError").textContent = "Please type your name."; return; }
+  $("startBtn").disabled = true;
+  $("startError").textContent = "";
+  try {
+    const res = await fetch("/session", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: studentName, language: $("language").value, quality: $("quality").value }),
+    });
+    const session = await res.json();
+    if (!res.ok) throw new Error(session.detail || "Could not start the session");
+
+    pc = new RTCPeerConnection();
+
+    // the tutor's voice: play the audio track OpenAI sends back
+    const audio = document.createElement("audio");
+    audio.autoplay = true;
+    pc.ontrack = (e) => { audio.srcObject = e.streams[0]; };
+
+    // your voice: send the microphone
+    // the browser cleans the mic: removes echo of the tutor's voice and noise, and boosts a quiet voice
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+    });
+    pc.addTrack(micStream.getTracks()[0]);
+
+    // events (transcripts, tool calls) travel on this data channel
+    dc = pc.createDataChannel("oai-events");
+    dc.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    dc.onopen = () => {
+      setStatus("🟢 Live — just talk");
+      dc.send(JSON.stringify({ type: "response.create" }));   // let the tutor say hello first
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    const sdp = await fetch("https://api.openai.com/v1/realtime/calls", {
+      method: "POST", body: offer.sdp,
+      headers: { Authorization: `Bearer ${session.key}`, "Content-Type": "application/sdp" },
+    });
+    if (!sdp.ok) throw new Error("OpenAI refused the connection: " + (await sdp.text()).slice(0, 200));
+    await pc.setRemoteDescription({ type: "answer", sdp: await sdp.text() });
+
+    $("startCard").classList.add("hidden");
+    $("callCard").classList.remove("hidden");
+    $("chatCard").classList.remove("hidden");
+  } catch (err) {
+    $("startError").textContent = err.name === "NotAllowedError"
+      ? "Please allow the microphone in your browser." : String(err.message || err);
+    $("startBtn").disabled = false;
+    stop(false);
+  }
+}
+
+// ---------- events from OpenAI ----------
+async function handleEvent(ev) {
+  switch (ev.type) {
+    case "input_audio_buffer.speech_started":
+      setStatus("👂 Listening…");
+      break;
+    case "input_audio_buffer.committed":                // you finished a sentence: reserve its place
+      addBubble("me pending", "…", ev.item_id);
+      setStatus("💭 Thinking…");
+      break;
+    case "conversation.item.input_audio_transcription.completed":
+    case "input_audio_buffer.transcription.done": {     // what you said, written down
+      const b = bubbles[ev.item_id];
+      const text = (ev.transcript || "").trim() || "(not understood)";
+      if (b) { b.textContent = text; b.classList.remove("pending"); } else addBubble("me", text, ev.item_id);
+      break;
+    }
+    case "response.output_audio_transcript.delta": {   // the tutor talking, word by word
+      const b = bubbles[ev.item_id] || addBubble("tutor", "", ev.item_id);
+      b.textContent += ev.delta;
+      setStatus("🗣️ Tutor is talking — interrupt any time");
+      break;
+    }
+    case "response.output_audio_transcript.done":
+      if (bubbles[ev.item_id] && ev.transcript) bubbles[ev.item_id].textContent = ev.transcript;
+      break;
+    case "response.done":
+      await runToolCalls(ev.response?.output || []);
+      if (!(ev.response?.output || []).some((o) => o.type === "function_call")) setStatus("🟢 Live — your turn");
+      break;
+    case "error":
+      addChip("⚠️ " + (ev.error?.message || "Something went wrong"));
+      break;
+  }
+}
+
+// ---------- tools: the model asks, OUR server runs it, we send the result back ----------
+async function runToolCalls(output) {
+  const calls = output.filter((o) => o.type === "function_call");
+  if (!calls.length) return;
+  for (const call of calls) {
+    const chip = addChip(TOOL_LABELS[call.name] || `🔧 ${call.name}…`);
+    let result;
+    try {
+      const res = await fetch("/tool", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: studentName, tool: call.name, arguments: call.arguments }),
+      });
+      result = (await res.json()).output ?? "Tool failed.";
+    } catch { result = "Tool failed: the server did not answer."; }
+    chip.classList.add("done");
+    dc.send(JSON.stringify({
+      type: "conversation.item.create",
+      item: { type: "function_call_output", call_id: call.call_id, output: result },
+    }));
+  }
+  dc.send(JSON.stringify({ type: "response.create" }));   // now answer, using the tool results
+}
+
+// ---------- mute and stop ----------
+function toggleMute() {
+  const track = micStream?.getTracks()[0];
+  if (!track) return;
+  track.enabled = !track.enabled;
+  $("micBtn").classList.toggle("muted", !track.enabled);
+  $("muteBtn").textContent = track.enabled ? "Mute" : "Unmute";
+  setStatus(track.enabled ? "🟢 Live — just talk" : "🔇 Muted — the tutor can't hear you");
+}
+function stop(showStart = true) {
+  micStream?.getTracks().forEach((t) => t.stop());
+  dc?.close(); pc?.close();
+  pc = dc = micStream = null;
+  if (showStart) {
+    $("callCard").classList.add("hidden");
+    $("startCard").classList.remove("hidden");
+    $("startBtn").disabled = false;
+    addChip("📞 Call ended. Your quiz scores are saved.");
+  }
+}
+
+// opened from the Streamlit app? it passes ?name=...&lang=... so the student doesn't type it again
+const params = new URLSearchParams(location.search);
+if (params.get("name")) $("name").value = params.get("name");
+if (["nl", "en", "auto"].includes(params.get("lang"))) $("language").value = params.get("lang");
+if (window.self !== window.top) document.querySelector("header a").classList.add("hidden");   // already in the app
+
+$("startBtn").onclick = start;
+$("name").onkeydown = (e) => { if (e.key === "Enter") start(); };
+$("micBtn").onclick = toggleMute;
+$("muteBtn").onclick = toggleMute;
+$("stopBtn").onclick = () => stop(true);
+</script>
+</body>
+</html>

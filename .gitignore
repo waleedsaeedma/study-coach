@@ -1,0 +1,10 @@
+# secrets — never upload
+.env
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# personal data: uploaded notes (copyrighted books), vector DB, student memory, logs
+data/
