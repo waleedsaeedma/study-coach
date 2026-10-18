@@ -76,49 +76,41 @@ Create the `.env` file first (see above), then build the image and start a conta
 
 ```bash
 docker build -t study-coach .
-docker run -d --name study-coach -p 8501:8501 -p 8000:8000 --env-file .env -v study-coach-data:/app/data study-coach
+docker run -d --name study-coach -p 7860:7860 --env-file .env -v study-coach-data:/app/data study-coach
 ```
 
-Open http://localhost:8501.
+Open http://localhost:7860 (in GitHub Codespaces: port **7860** in the **Ports** tab).
 
+- One port for everything: inside the container, **nginx** sends `/live/` to the live voice server and the
+  rest to Streamlit (`nginx.conf`, started by `start.sh`).
 - `--env-file .env` gives the API keys to the container; they are never copied into the image (`.dockerignore`).
 - `-v study-coach-data:/app/data` keeps your notes, Chroma and memory in a Docker volume, so they survive
   `docker rm`.
 
-**GitHub Codespaces:** the browser is not inside the Codespace, so the live call needs the forwarded address
-of port 8000. Add this to `docker run`:
+## Put it online (Hugging Face Spaces, free)
 
-```bash
--e LIVE_PUBLIC_URL="https://${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
-```
+1. Make a free account on [huggingface.co](https://huggingface.co) and a token with **Write** access
+   (**Settings → Access Tokens**). Log in once: `hf auth login` and paste the token.
+2. Add the password of the online app to `.env` (the app is public, the password protects your API keys):
 
-Then open port 8501 from the **Ports** tab. If the live call stays empty, set port 8000 to **Public** in the
-Ports tab while you use it (anyone with the link can then start a call on your OpenAI key, so set it back to
-Private afterwards). If uploading a PDF fails with error 403, add
-`streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableXsrfProtection=false`
-at the end of `docker run`.
+   ```
+   SPACE_APP_PASSWORD=a-long-password
+   ```
 
-## Put it online (Render, free)
+3. Commit your changes, then run:
 
-1. On [render.com](https://render.com), sign in with GitHub: **New → Web Service** → pick this repository.
-   Render finds the `Dockerfile` by itself. Choose the **Free** instance type.
-2. Add these **Environment Variables**:
+   ```bash
+   python deploy_hf.py
+   ```
 
-   | Name | Value |
-   |---|---|
-   | `OPENAI_API_KEY` | your OpenAI key |
-   | `TAVILY_API_KEY` | your Tavily key |
-   | `APP_PASSWORD` | a long password: the app is public, this protects your keys |
-   | `LIVE_CALL` | `off` (Render has one public port, the live call needs a second one) |
-   | `PORT` | `8501` (the port Streamlit listens on) |
+   It uploads the last commit to the Space `study-coach`, gives it your API keys as secrets, and Hugging Face
+   builds the Dockerfile (a few minutes). Run it again after every commit you want online.
 
-3. Click **Create Web Service** and wait for the build. Your app is at `https://<name>.onrender.com`.
+Open the app at `https://<your-hf-name>-study-coach.hf.space`. On a phone, open that address and choose
+**Add to Home screen** (Chrome ⋮ menu, or Safari's Share button); allow the microphone for the live call.
 
-On a phone, open that address and choose **Add to Home screen** (Chrome ⋮ menu, or Safari's Share button).
-
-Limits of the free plan: the app sleeps after 15 minutes without visitors (the first visit after that takes
-about a minute), it has 512 MB of memory, and **nothing in `data/` is kept** when it restarts or sleeps, so
-upload your notes again and progress starts fresh.
+Limits of the free plan: the app sleeps after about 48 hours without visitors, and **nothing in `data/` is
+kept** when it restarts, so upload your notes again and progress starts fresh.
 
 ## Tests
 
@@ -139,7 +131,9 @@ tutor/
   tools.py             note search, web search
   prompts.py           all prompts + fixed sentences (English + Dutch)
   voice.py             speech-to-text and text-to-speech
-live/                  live voice call: FastAPI server, Realtime tools, web page
+live/                  live voice call: FastAPI server, Realtime tools, web page, token check (auth.py)
 tests/                 pytest unit tests
 Dockerfile             recipe for the Docker image (.dockerignore keeps secrets and data out)
+nginx.conf, start.sh   one port in the container: nginx in front of Streamlit and the voice server
+deploy_hf.py           put the app online on Hugging Face Spaces
 ```

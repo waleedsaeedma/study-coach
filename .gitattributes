@@ -1,0 +1,2 @@
+# Shell scripts run in Linux containers: always keep Linux line endings, even when edited on Windows
+*.sh text eol=lf

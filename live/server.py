@@ -4,6 +4,7 @@ The browser talks to OpenAI directly (WebRTC). This server only:
   GET  /         -> the web page
   POST /session  -> a short-lived key for the browser (the real API key never leaves this computer)
   POST /tool     -> runs a tool when the Realtime model asks for one
+Online (APP_PASSWORD set), /session and /tool also need the secret token from the app (live/auth.py).
 
 Run:  python -m uvicorn live.server:app --port 8000      then open http://localhost:8000
 """
@@ -14,12 +15,13 @@ from typing import Literal
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 load_dotenv()
 
+from live.auth import token_ok
 from live.tools import TOOLS, run_tool
 from tutor.prompts import LIVE_PROMPT, LIVE_LANGUAGE_RULES
 from tutor.tools import pages_per_topic
@@ -55,6 +57,12 @@ def clean_id(name: str) -> str:
     return student_id
 
 
+def check_token(x_live_token: str | None = Header(default=None)):
+    """Runs before /session and /tool. FastAPI reads the "X-Live-Token" header into x_live_token."""
+    if not token_ok(x_live_token):
+        raise HTTPException(status_code=401, detail="Open the live call from the Study Coach app.")
+
+
 # ---------- request bodies (FastAPI checks them with pydantic) ----------
 
 class SessionRequest(BaseModel):
@@ -78,7 +86,7 @@ def page():
     return HTMLResponse("<h1>Study Coach live voice</h1><p>The page is not built yet.</p>")
 
 
-@app.post("/session")
+@app.post("/session", dependencies=[Depends(check_token)])
 def create_session(req: SessionRequest):
     """Ask OpenAI for a short-lived key, with the whole session set up: voice, instructions, tools."""
     student_id = clean_id(req.name)
@@ -119,7 +127,7 @@ def create_session(req: SessionRequest):
     return {"key": response.json()["value"], "model": MODELS[req.quality], "student_id": student_id}
 
 
-@app.post("/tool")
+@app.post("/tool", dependencies=[Depends(check_token)])
 def call_tool(req: ToolRequest):
     """The browser forwards a tool call from the model; we run it and send the result back."""
     return {"output": run_tool(req.tool, req.arguments, clean_id(req.name))}

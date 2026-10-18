@@ -153,6 +153,10 @@ function addChip(text) {
 }
 const setStatus = (text) => { $("status").textContent = text; };
 
+// calls to OUR server: "session" and "tool" have no "/" in front, so they also work when this page lives at
+// /live/ (online, behind nginx). The token comes from the app (?token=...); online the server needs it.
+const serverHeaders = () => ({ "Content-Type": "application/json", "X-Live-Token": params.get("token") || "" });
+
 // ---------- start: get a short-lived key from OUR server, then connect to OpenAI ----------
 async function start() {
   studentName = $("name").value.trim();
@@ -160,8 +164,8 @@ async function start() {
   $("startBtn").disabled = true;
   $("startError").textContent = "";
   try {
-    const res = await fetch("/session", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    const res = await fetch("session", {
+      method: "POST", headers: serverHeaders(),
       body: JSON.stringify({ name: studentName, language: $("language").value, quality: $("quality").value }),
     });
     const session = await res.json();
@@ -253,8 +257,8 @@ async function runToolCalls(output) {
     const chip = addChip(TOOL_LABELS[call.name] || `🔧 ${call.name}…`);
     let result;
     try {
-      const res = await fetch("/tool", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const res = await fetch("tool", {
+        method: "POST", headers: serverHeaders(),
         body: JSON.stringify({ name: studentName, tool: call.name, arguments: call.arguments }),
       });
       result = (await res.json()).output ?? "Tool failed.";

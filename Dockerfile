@@ -5,21 +5,30 @@
 # 1. Start from Python 3.14 (the same version as .venv). "slim" = a small Linux without extras.
 FROM python:3.14-slim
 
-# 2. All our files live in /app inside the container.
+# 2. nginx = the "doorman": one public port, it sends /live/ to the voice server and the rest to Streamlit.
+RUN apt-get update && apt-get install -y --no-install-recommends nginx && rm -rf /var/lib/apt/lists/*
+
+# 3. A normal user (number 1000), not root. Hugging Face runs containers as this user, so we test the same way.
+RUN useradd -m -u 1000 user
+
+# 4. All our files live in /app inside the container.
 WORKDIR /app
 
-# 3. Install the packages first. Docker caches this step, so changing app code does not reinstall everything.
+# 5. Install the packages first. Docker caches this step, so changing app code does not reinstall everything.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. Copy the code (.dockerignore keeps out .env, .venv and data/).
-COPY . .
+# 6. Copy the code (.dockerignore keeps out .env, .venv and data/), owned by our user.
+#    data/ must exist and be writable: notes, Chroma and memory are saved there.
+COPY --chown=user . .
+RUN mkdir -p data && chown user data
+USER user
+ENV HOME=/home/user
 
-# 5. The live voice server (FastAPI) also listens on 0.0.0.0, so the browser outside the container can reach it.
-#    The browser's address for it (LIVE_PUBLIC_URL) is set when the container starts, because it differs per machine.
-ENV LIVE_HOST=0.0.0.0
+# 7. The browser opens the live call at /live (through nginx), on the same address as the app.
+ENV LIVE_PUBLIC_URL=/live
 
-# 6. Streamlit listens on 8501, the live voice server on 8000.
-#    0.0.0.0 = accept connections from outside the container, not only from inside.
-EXPOSE 8501 8000
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
+# 8. One public port: nginx listens on 7860 (Hugging Face's default). Streamlit (8501) and the voice
+#    server (8000) only listen inside the container.
+EXPOSE 7860
+CMD ["sh", "start.sh"]

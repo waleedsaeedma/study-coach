@@ -21,7 +21,8 @@ import streamlit as st
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 
-from notes_loader.load_notes import load_notes
+from live.auth import live_token
+from notes_loader.load_notes import load_notes, NoTextInPDF
 from tutor.graph import build_graph
 from tutor.nodes.start import profile_namespace
 from tutor.rules import is_weak
@@ -32,9 +33,7 @@ from tutor.voice import transcribe, speak
 ROOT = Path(__file__).resolve().parent
 UPLOAD_DIR = ROOT / "data" / "uploads"
 LIVE_URL = "http://localhost:8000"                          # the app checks the voice server here (same machine)
-LIVE_HOST = os.getenv("LIVE_HOST", "127.0.0.1")             # Docker sets 0.0.0.0, so the browser can reach it
-LIVE_PUBLIC_URL = os.getenv("LIVE_PUBLIC_URL", LIVE_URL)    # the address the BROWSER opens (Codespaces: forwarded URL)
-LIVE_CALL = os.getenv("LIVE_CALL", "on") == "on"            # Render has only one public port, so it sets LIVE_CALL=off
+LIVE_PUBLIC_URL = os.getenv("LIVE_PUBLIC_URL", LIVE_URL)    # the address the BROWSER opens (Docker: /live, via nginx)
 APP_PASSWORD = os.getenv("APP_PASSWORD")                    # set it when the app is online: it protects your API keys
 
 st.set_page_config(page_title="Study Coach", page_icon="📚", layout="centered")
@@ -126,7 +125,7 @@ def start_live_server():
         return None
     log = open(ROOT / "data" / "live_server.log", "w")
     process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "live.server:app", "--host", LIVE_HOST, "--port", "8000"],
+        [sys.executable, "-m", "uvicorn", "live.server:app", "--host", "127.0.0.1", "--port", "8000"],
         cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
     )
     atexit.register(process.terminate)                  # stop it again when the app stops
@@ -263,10 +262,15 @@ with st.sidebar:
         path = UPLOAD_DIR / student_id / uploaded.name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(uploaded.getvalue())
-        with st.spinner(f"Reading {uploaded.name} and finding topics..."):
-            topics = load_notes(str(path), student_id)
-        done.add((student_id, uploaded.name))
-        st.success(f"Loaded {len(topics)} topics: " + ", ".join(topics))
+        try:
+            with st.spinner(f"Reading {uploaded.name} and finding topics..."):
+                topics = load_notes(str(path), student_id)
+        except NoTextInPDF:
+            st.error("No text found in this PDF. It is probably a scan (photos of pages). "
+                     "Use a PDF where you can select the text with the mouse.")
+        else:
+            done.add((student_id, uploaded.name))
+            st.success(f"Loaded {len(topics)} topics: " + ", ".join(topics))
 
     st.subheader("Your progress")
     profile = load_profile(student_id)
@@ -296,8 +300,7 @@ messages = state.values.get("messages", [])
 language = state.values.get("language", "en")
 waiting = pending_question()
 
-modes = ["💬 Explain", "📝 Quiz me"] + (["📞 Live call"] if LIVE_CALL else [])
-mode_label = st.segmented_control("Study mode", modes, default="💬 Explain")
+mode_label = st.segmented_control("Study mode", ["💬 Explain", "📝 Quiz me", "📞 Live call"], default="💬 Explain")
 chosen_mode = "quiz" if mode_label == "📝 Quiz me" else "explain"
 st.caption("🗂️ Flashcards and 📄 practice exam: coming in v2")
 
@@ -312,7 +315,10 @@ if mode_label == "📞 Live call":
         st.stop()
     st.caption("Talk like a phone call; you can interrupt. It costs a little while the call is open, "
                "so press **End call** when you're done. Quiz scores from the call appear in *Your progress*.")
-    st.iframe(f"{LIVE_PUBLIC_URL}/?{urlencode({'name': name.strip(), 'lang': speak_lang})}", height=760)
+    page_args = {"name": name.strip(), "lang": speak_lang}
+    if live_token():                                    # online: the voice server only works with this token
+        page_args["token"] = live_token()
+    st.iframe(f"{LIVE_PUBLIC_URL}/?{urlencode(page_args)}", height=760)
     st.stop()                                           # live mode has its own transcript, no chat below
 
 

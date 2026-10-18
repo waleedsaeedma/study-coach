@@ -88,6 +88,10 @@ def tag_topics(pages: dict[int, str], topic_list: list[str] | None = None) -> di
     return topics
 
 
+class NoTextInPDF(ValueError):
+    """The PDF has no text we can read, e.g. a scan (photos of pages)."""
+
+
 # ---------- Chroma ----------
 
 def get_vectorstore() -> Chroma:
@@ -107,6 +111,8 @@ def load_notes(pdf_path: str, student_id: str) -> dict[str, int]:
     pages = {n: page.extract_text() or "" for n, page in enumerate(reader.pages, start=1)}
     pages = {n: text for n, text in pages.items() if text.strip()}     # skip empty pages
     print(f"Read {len(pages)} pages with text from {file_name}")
+    if not pages:                                     # stop BEFORE paying for any LLM call
+        raise NoTextInPDF(f"No text found in {file_name}")
 
     # 2. Give every page a topic. Uploaded this file before? Reuse its topic names,
     #    so the student's mastery (which is counted per topic name) stays connected.
