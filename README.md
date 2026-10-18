@@ -87,30 +87,28 @@ Open http://localhost:7860 (in GitHub Codespaces: port **7860** in the **Ports**
 - `-v study-coach-data:/app/data` keeps your notes, Chroma and memory in a Docker volume, so they survive
   `docker rm`.
 
-## Put it online (Hugging Face Spaces, free)
+## Put it online (Render, free)
 
-1. Make a free account on [huggingface.co](https://huggingface.co) and a token with **Write** access
-   (**Settings → Access Tokens**). Log in once: `hf auth login` and paste the token.
-2. Add the password of the online app to `.env` (the app is public, the password protects your API keys):
+1. On [render.com](https://render.com), sign in with GitHub: **New → Web Service** → pick this repository
+   (or paste its URL under **Public Git Repository**). Render finds the `Dockerfile` by itself.
+   Choose the **Free** instance type.
+2. Add these **Environment Variables**:
 
-   ```
-   SPACE_APP_PASSWORD=a-long-password
-   ```
+   | Name | Value |
+   |---|---|
+   | `OPENAI_API_KEY` | your OpenAI key |
+   | `TAVILY_API_KEY` | your Tavily key |
+   | `APP_PASSWORD` | a long password: the app is public, this protects your keys |
+   | `LIVE_CALL` | `off` (the live call runs a second server; the free plan has only 512 MB of memory) |
+   | `PORT` | `7860` (the port nginx listens on in the container) |
 
-3. Commit your changes, then run:
+3. Click **Create Web Service** and wait for the build. Your app is at `https://<name>.onrender.com`.
 
-   ```bash
-   python deploy_hf.py
-   ```
+On a phone, open that address and choose **Add to Home screen** (Chrome ⋮ menu, or Safari's Share button).
 
-   It uploads the last commit to the Space `study-coach`, gives it your API keys as secrets, and Hugging Face
-   builds the Dockerfile (a few minutes). Run it again after every commit you want online.
-
-Open the app at `https://<your-hf-name>-study-coach.hf.space`. On a phone, open that address and choose
-**Add to Home screen** (Chrome ⋮ menu, or Safari's Share button); allow the microphone for the live call.
-
-Limits of the free plan: the app sleeps after about 48 hours without visitors, and **nothing in `data/` is
-kept** when it restarts, so upload your notes again and progress starts fresh.
+Limits of the free plan: the app sleeps after 15 minutes without visitors (the first visit after that takes
+about a minute), it has 512 MB of memory, and **nothing in `data/` is kept** when it restarts or sleeps, so
+upload your notes again and progress starts fresh.
 
 ## Tests
 
@@ -135,5 +133,4 @@ live/                  live voice call: FastAPI server, Realtime tools, web page
 tests/                 pytest unit tests
 Dockerfile             recipe for the Docker image (.dockerignore keeps secrets and data out)
 nginx.conf, start.sh   one port in the container: nginx in front of Streamlit and the voice server
-deploy_hf.py           put the app online on Hugging Face Spaces
 ```

@@ -1,2 +1,5 @@
-# Shell scripts run in Linux containers: always keep Linux line endings, even when edited on Windows
+# Files used inside the Linux container: always keep Linux line endings, even when edited on Windows
+# (Cloud Run builds from the files on this laptop, so they must already be right here)
 *.sh text eol=lf
+nginx.conf text eol=lf
+Dockerfile text eol=lf

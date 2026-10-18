@@ -35,6 +35,7 @@ UPLOAD_DIR = ROOT / "data" / "uploads"
 LIVE_URL = "http://localhost:8000"                          # the app checks the voice server here (same machine)
 LIVE_PUBLIC_URL = os.getenv("LIVE_PUBLIC_URL", LIVE_URL)    # the address the BROWSER opens (Docker: /live, via nginx)
 APP_PASSWORD = os.getenv("APP_PASSWORD")                    # set it when the app is online: it protects your API keys
+LIVE_CALL = os.getenv("LIVE_CALL", "on") == "on"            # LIVE_CALL=off hides it (Render: saves memory)
 
 st.set_page_config(page_title="Study Coach", page_icon="📚", layout="centered")
 
@@ -300,7 +301,8 @@ messages = state.values.get("messages", [])
 language = state.values.get("language", "en")
 waiting = pending_question()
 
-mode_label = st.segmented_control("Study mode", ["💬 Explain", "📝 Quiz me", "📞 Live call"], default="💬 Explain")
+modes = ["💬 Explain", "📝 Quiz me"] + (["📞 Live call"] if LIVE_CALL else [])
+mode_label = st.segmented_control("Study mode", modes, default="💬 Explain")
 chosen_mode = "quiz" if mode_label == "📝 Quiz me" else "explain"
 st.caption("🗂️ Flashcards and 📄 practice exam: coming in v2")
 

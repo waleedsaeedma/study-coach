@@ -14,4 +14,3 @@ data/
 # not needed to run the app
 .git/
 docs/
-deploy_hf.py
