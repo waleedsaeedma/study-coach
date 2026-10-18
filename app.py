@@ -5,6 +5,7 @@ Run:  streamlit run app.py
 import atexit
 import html
 import io
+import os
 import re
 import subprocess
 import sys
@@ -29,7 +30,9 @@ from tutor.voice import transcribe, speak
 
 ROOT = Path(__file__).resolve().parent
 UPLOAD_DIR = ROOT / "data" / "uploads"
-LIVE_URL = "http://localhost:8000"
+LIVE_URL = "http://localhost:8000"                          # the app checks the voice server here (same machine)
+LIVE_HOST = os.getenv("LIVE_HOST", "127.0.0.1")             # Docker sets 0.0.0.0, so the browser can reach it
+LIVE_PUBLIC_URL = os.getenv("LIVE_PUBLIC_URL", LIVE_URL)    # the address the BROWSER opens (Codespaces: forwarded URL)
 
 st.set_page_config(page_title="Study Coach", page_icon="📚", layout="centered")
 
@@ -103,7 +106,7 @@ def start_live_server():
         return None
     log = open(ROOT / "data" / "live_server.log", "w")
     process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "live.server:app", "--host", "127.0.0.1", "--port", "8000"],
+        [sys.executable, "-m", "uvicorn", "live.server:app", "--host", LIVE_HOST, "--port", "8000"],
         cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
     )
     atexit.register(process.terminate)                  # stop it again when the app stops
@@ -288,7 +291,7 @@ if mode_label == "📞 Live call":
         st.stop()
     st.caption("Talk like a phone call; you can interrupt. It costs a little while the call is open, "
                "so press **End call** when you're done. Quiz scores from the call appear in *Your progress*.")
-    st.iframe(f"{LIVE_URL}/?{urlencode({'name': name.strip(), 'lang': speak_lang})}", height=760)
+    st.iframe(f"{LIVE_PUBLIC_URL}/?{urlencode({'name': name.strip(), 'lang': speak_lang})}", height=760)
     st.stop()                                           # live mode has its own transcript, no chat below
 
 

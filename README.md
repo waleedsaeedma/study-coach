@@ -70,6 +70,34 @@ streamlit run app.py
 
 The live voice server starts by itself when you choose **📞 Live call**.
 
+## Run it in Docker
+
+Create the `.env` file first (see above), then build the image and start a container:
+
+```bash
+docker build -t study-coach .
+docker run -d --name study-coach -p 8501:8501 -p 8000:8000 --env-file .env -v study-coach-data:/app/data study-coach
+```
+
+Open http://localhost:8501.
+
+- `--env-file .env` gives the API keys to the container; they are never copied into the image (`.dockerignore`).
+- `-v study-coach-data:/app/data` keeps your notes, Chroma and memory in a Docker volume, so they survive
+  `docker rm`.
+
+**GitHub Codespaces:** the browser is not inside the Codespace, so the live call needs the forwarded address
+of port 8000. Add this to `docker run`:
+
+```bash
+-e LIVE_PUBLIC_URL="https://${CODESPACE_NAME}-8000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+```
+
+Then open port 8501 from the **Ports** tab. If the live call stays empty, set port 8000 to **Public** in the
+Ports tab while you use it (anyone with the link can then start a call on your OpenAI key, so set it back to
+Private afterwards). If uploading a PDF fails with error 403, add
+`streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableXsrfProtection=false`
+at the end of `docker run`.
+
 ## Tests
 
 ```bash
@@ -91,4 +119,5 @@ tutor/
   voice.py             speech-to-text and text-to-speech
 live/                  live voice call: FastAPI server, Realtime tools, web page
 tests/                 pytest unit tests
+Dockerfile             recipe for the Docker image (.dockerignore keeps secrets and data out)
 ```

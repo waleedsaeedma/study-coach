@@ -1,25 +1,33 @@
+# Versions are pinned (==) to the ones tested in .venv, so the Docker image installs exactly the same code.
+
 # --- the agent (LangGraph) ---
-langgraph                      # nodes, edges, loops, interrupts
-langgraph-checkpoint-sqlite    # save state + store to disk (tutor.db)
+langgraph==1.2.12                    # nodes, edges, loops, interrupts
+langgraph-checkpoint-sqlite==3.1.1   # save state + store to disk (tutor.db)
+langgraph-checkpoint==4.2.0          # the save format of sessions.db (pinned so old saves still load)
 
 # --- LangChain parts ---
-langchain-core                 # messages, prompts, structured output
-langchain-openai               # ChatOpenAI (LLM) + OpenAIEmbeddings
-langchain-text-splitters       # cut the notes into chunks
-langchain-chroma               # connect LangChain to Chroma
-langchain-tavily               # web search tool
+langchain-core==1.6.6                # messages, prompts, structured output
+langchain-openai==1.6.7              # ChatOpenAI (LLM) + OpenAIEmbeddings
+langchain-text-splitters==1.1.2      # cut the notes into chunks
+langchain-chroma==1.1.0              # connect LangChain to Chroma
+langchain-tavily==0.2.18             # web search tool
+
+# --- used directly in our code (they also come with the packages above, but we import them ourselves) ---
+openai==3.22.1                       # speech-to-text + text-to-speech (tutor/voice.py)
+httpx==0.28.1                        # small HTTP calls (app.py, live/server.py)
+pydantic==2.13.5                     # data shapes for state and structured output
 
 # --- notes + config ---
-pypdf                          # read text + page numbers from PDFs
-pypdfium2                      # turn PDF pages into pictures (shown next to explanations)
-python-dotenv                  # load API keys from .env
+pypdf==6.19.0                        # read text + page numbers from PDFs
+pypdfium2==5.13.0                    # turn PDF pages into pictures (shown next to explanations)
+python-dotenv==1.2.4                 # load API keys from .env
 
 # --- UI ---
-streamlit                      # the web app (thin layer on top of the graph)
+streamlit==1.64.0                    # the web app (thin layer on top of the graph)
 
 # --- live voice (v3) ---
-fastapi                        # small web server: gives the browser a short-lived key + runs tools
-uvicorn                        # runs the FastAPI server
+fastapi==0.142.2                     # small web server: gives the browser a short-lived key + runs tools
+uvicorn==0.54.0                      # runs the FastAPI server
 
 # --- tests ---
-pytest                         # run all tests with one command: pytest
+pytest==9.1.1                        # run all tests with one command: pytest

@@ -1,0 +1,16 @@
+# Files Docker must NOT copy into the image (like .gitignore, but for "docker build")
+
+# secrets — pass them when the container starts (--env-file .env), never bake them into the image
+.env
+
+# the laptop's own Python environment; the image installs its own packages from requirements.txt
+.venv/
+__pycache__/
+.pytest_cache/
+
+# personal data: mount it as a volume instead (-v), so it survives when the container is removed
+data/
+
+# not needed to run the app
+.git/
+docs/
