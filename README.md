@@ -98,6 +98,28 @@ Private afterwards). If uploading a PDF fails with error 403, add
 `streamlit run app.py --server.address=0.0.0.0 --server.headless=true --server.enableXsrfProtection=false`
 at the end of `docker run`.
 
+## Put it online (Render, free)
+
+1. On [render.com](https://render.com), sign in with GitHub: **New → Web Service** → pick this repository.
+   Render finds the `Dockerfile` by itself. Choose the **Free** instance type.
+2. Add these **Environment Variables**:
+
+   | Name | Value |
+   |---|---|
+   | `OPENAI_API_KEY` | your OpenAI key |
+   | `TAVILY_API_KEY` | your Tavily key |
+   | `APP_PASSWORD` | a long password: the app is public, this protects your keys |
+   | `LIVE_CALL` | `off` (Render has one public port, the live call needs a second one) |
+   | `PORT` | `8501` (the port Streamlit listens on) |
+
+3. Click **Create Web Service** and wait for the build. Your app is at `https://<name>.onrender.com`.
+
+On a phone, open that address and choose **Add to Home screen** (Chrome ⋮ menu, or Safari's Share button).
+
+Limits of the free plan: the app sleeps after 15 minutes without visitors (the first visit after that takes
+about a minute), it has 512 MB of memory, and **nothing in `data/` is kept** when it restarts or sleeps, so
+upload your notes again and progress starts fresh.
+
 ## Tests
 
 ```bash

@@ -3,6 +3,7 @@
 Run:  streamlit run app.py
 """
 import atexit
+import hmac
 import html
 import io
 import os
@@ -33,8 +34,27 @@ UPLOAD_DIR = ROOT / "data" / "uploads"
 LIVE_URL = "http://localhost:8000"                          # the app checks the voice server here (same machine)
 LIVE_HOST = os.getenv("LIVE_HOST", "127.0.0.1")             # Docker sets 0.0.0.0, so the browser can reach it
 LIVE_PUBLIC_URL = os.getenv("LIVE_PUBLIC_URL", LIVE_URL)    # the address the BROWSER opens (Codespaces: forwarded URL)
+LIVE_CALL = os.getenv("LIVE_CALL", "on") == "on"            # Render has only one public port, so it sets LIVE_CALL=off
+APP_PASSWORD = os.getenv("APP_PASSWORD")                    # set it when the app is online: it protects your API keys
 
 st.set_page_config(page_title="Study Coach", page_icon="📚", layout="centered")
+
+
+def ask_password():
+    """Stop the page until the right password is typed. Only when APP_PASSWORD is set (not on the laptop)."""
+    if not APP_PASSWORD or st.session_state.get("unlocked"):
+        return
+    st.title("📚 Study Coach")
+    typed = st.text_input("Password", type="password")
+    if typed and hmac.compare_digest(typed.encode(), APP_PASSWORD.encode()):   # safe compare: no timing hints
+        st.session_state.unlocked = True
+        st.rerun()                                      # draw the page again, now unlocked
+    if typed:
+        st.error("Wrong password.")
+    st.stop()                                           # nothing below runs (no LLM calls) without the password
+
+
+ask_password()
 
 
 @st.cache_resource
@@ -276,7 +296,8 @@ messages = state.values.get("messages", [])
 language = state.values.get("language", "en")
 waiting = pending_question()
 
-mode_label = st.segmented_control("Study mode", ["💬 Explain", "📝 Quiz me", "📞 Live call"], default="💬 Explain")
+modes = ["💬 Explain", "📝 Quiz me"] + (["📞 Live call"] if LIVE_CALL else [])
+mode_label = st.segmented_control("Study mode", modes, default="💬 Explain")
 chosen_mode = "quiz" if mode_label == "📝 Quiz me" else "explain"
 st.caption("🗂️ Flashcards and 📄 practice exam: coming in v2")
 
